@@ -195,35 +195,87 @@ HRESULT STDMETHODCALLTYPE Direct3D8::CreateDevice(UINT Adapter, D3DDEVTYPE Devic
 	}
 
 	*ppReturnedDeviceInterface = nullptr;
+	HRESULT hr = D3DERR_INVALIDCALL;
 
-	D3DPRESENT_PARAMETERS PresentParams;
+	D3DPRESENT_PARAMETERS PresentParams, d3dpp;
 	ConvertPresentParameters(*pPresentationParameters, PresentParams);
-
-	// Get multisample quality level
-	if (PresentParams.MultiSampleType != D3DMULTISAMPLE_NONE)
-	{
-		DWORD QualityLevels = 0;
-		if (ProxyInterface->CheckDeviceMultiSampleType(Adapter,
-			DeviceType, PresentParams.BackBufferFormat, PresentParams.Windowed,
-			PresentParams.MultiSampleType, &QualityLevels) == S_OK &&
-			ProxyInterface->CheckDeviceMultiSampleType(Adapter,
-				DeviceType, PresentParams.AutoDepthStencilFormat, PresentParams.Windowed,
-				PresentParams.MultiSampleType, &QualityLevels) == S_OK)
-		{
-			PresentParams.MultiSampleQuality = (QualityLevels != 0) ? QualityLevels - 1 : 0;
-		}
-	}
 
 	IDirect3DDevice9 *DeviceInterface = nullptr;
 
-	HRESULT hr = ProxyInterface->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, &PresentParams, &DeviceInterface);
+	// Get multisample quality level
+	bool MultiSampleFlag = false;
+	if (PresentParams.MultiSampleType == D3DMULTISAMPLE_NONE)
+	{
+		DWORD QualityLevels = 0;
+		
+		CopyMemory(&d3dpp, &PresentParams, sizeof(D3DPRESENT_PARAMETERS));
+		d3dpp.BackBufferCount = (d3dpp.BackBufferCount) ? d3dpp.BackBufferCount : 1;
+
+		// Check AntiAliasing quality
+		for (int x = 16; x > 0; x--)
+		{
+			if (SUCCEEDED(ProxyInterface->CheckDeviceMultiSampleType(Adapter,
+				DeviceType, (d3dpp.BackBufferFormat) ? d3dpp.BackBufferFormat : D3DFMT_A8R8G8B8, d3dpp.Windowed,
+				(D3DMULTISAMPLE_TYPE)x, &QualityLevels)) ||
+				SUCCEEDED(ProxyInterface->CheckDeviceMultiSampleType(Adapter,
+					DeviceType, d3dpp.AutoDepthStencilFormat, d3dpp.Windowed,
+					(D3DMULTISAMPLE_TYPE)x, &QualityLevels)))
+			{
+				// Update Present Parameters for Multisample
+				UpdatePresentParameterForMultisample(&d3dpp, (D3DMULTISAMPLE_TYPE)x, (QualityLevels > 0) ? QualityLevels - 1 : 0);
+
+#ifndef D3D8TO9NOLOG
+				LOG << __FUNCTION__ << "Trying MultiSample " << d3dpp.MultiSampleType << " Quality " << d3dpp.MultiSampleQuality << std::endl;
+#endif
+
+				// Create Device
+				hr = ProxyInterface->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, &d3dpp, &DeviceInterface);
+
+				// Check if device was created successfully
+				if (SUCCEEDED(hr))
+				{
+					MultiSampleFlag = true;
+					DeviceInterface->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, TRUE);
+#ifndef D3D8TO9NOLOG
+					LOG << __FUNCTION__ << "Setting MultiSample " << d3dpp.MultiSampleType << " Quality " << d3dpp.MultiSampleQuality << std::endl;
+#endif
+					break;
+				}
+			}
+		}
+		if (FAILED(hr))
+		{
+#ifndef D3D8TO9NOLOG
+			LOG << __FUNCTION__ << " Failed to enable AntiAliasing!" << std::endl;
+#endif
+		}
+	}
+
+	if (FAILED(hr))
+	{
+		if (PresentParams.MultiSampleType == D3DMULTISAMPLE_NONE)
+		{
+			DWORD QualityLevels = 0;
+			if (ProxyInterface->CheckDeviceMultiSampleType(Adapter,
+				DeviceType, PresentParams.BackBufferFormat, PresentParams.Windowed,
+				PresentParams.MultiSampleType, &QualityLevels) == S_OK &&
+				ProxyInterface->CheckDeviceMultiSampleType(Adapter,
+					DeviceType, PresentParams.AutoDepthStencilFormat, PresentParams.Windowed,
+					PresentParams.MultiSampleType, &QualityLevels) == S_OK)
+			{
+				PresentParams.MultiSampleQuality = (QualityLevels != 0) ? QualityLevels - 1 : 0;
+			}
+		}
+
+		hr = ProxyInterface->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, &PresentParams, &DeviceInterface);
+	}
 
 	if (FAILED(hr))
 	{
 		return hr;
 	}
 
-	*ppReturnedDeviceInterface = new Direct3DDevice8(this, DeviceInterface, (PresentParams.Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL) != 0);
+	*ppReturnedDeviceInterface = new Direct3DDevice8(this, DeviceInterface, (MultiSampleFlag) ? &d3dpp : &PresentParams, hFocusWindow, MultiSampleFlag, (PresentParams.Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL) != 0);
 
 	// Set default vertex declaration
 	DeviceInterface->SetFVF(D3DFVF_XYZ);

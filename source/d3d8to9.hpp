@@ -67,6 +67,7 @@ class Direct3DDevice8 : public IUnknown
 
 public:
 	Direct3DDevice8(Direct3D8 *d3d, IDirect3DDevice9 *ProxyInterface, BOOL EnableZBufferDiscarding = FALSE);
+	Direct3DDevice8(Direct3D8 *d3d, IDirect3DDevice9 *ProxyInterface, D3DPRESENT_PARAMETERS *pPresentationParameters, HWND hWnd, bool MultiSampleFlag, BOOL EnableZBufferDiscarding);
 	~Direct3DDevice8();
 
 	IDirect3DDevice9 *GetProxyInterface() const { return ProxyInterface; }
@@ -174,6 +175,7 @@ public:
 
 private:
 	void ApplyClipPlanes();
+	void InitDevice(D3DPRESENT_PARAMETERS *pPresentationParameters, HWND hWnd, bool MultiSampleFlag);
 
 	Direct3D8 *const D3D;
 	IDirect3DDevice9 *const ProxyInterface;
@@ -186,6 +188,11 @@ private:
 	static constexpr size_t MAX_CLIP_PLANES = 6;
 	float StoredClipPlanes[MAX_CLIP_PLANES][4] = {};
 	DWORD ClipPlaneRenderState = 0;
+
+	bool DeviceMultiSampleFlag = false;
+	D3DMULTISAMPLE_TYPE DeviceMultiSampleType = D3DMULTISAMPLE_NONE;
+	DWORD DeviceMultiSampleQuality = 0;
+	HWND MainhWnd = nullptr;
 };
 
 class Direct3DSwapChain8 : public IUnknown, public AddressLookupTableObject

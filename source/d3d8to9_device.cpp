@@ -18,8 +18,41 @@ struct VertexShaderInfo
 Direct3DDevice8::Direct3DDevice8(Direct3D8 *d3d, IDirect3DDevice9 *ProxyInterface, BOOL EnableZBufferDiscarding) :
 	D3D(d3d), ProxyInterface(ProxyInterface), ZBufferDiscarding(EnableZBufferDiscarding)
 {
+#ifndef D3D8TO9NOLOG
+	LOG << __FUNCTION__ << " MultiSample disabled!!!" << std::endl;
+#endif
+	InitDevice(nullptr, nullptr, false);
+}
+Direct3DDevice8::Direct3DDevice8(Direct3D8 *d3d, IDirect3DDevice9 *ProxyInterface, D3DPRESENT_PARAMETERS *pPresentationParameters, HWND hWnd, bool MultiSampleFlag, BOOL EnableZBufferDiscarding) :
+	D3D(d3d), ProxyInterface(ProxyInterface), ZBufferDiscarding(EnableZBufferDiscarding)
+{
+	InitDevice(pPresentationParameters, hWnd, MultiSampleFlag);
+}
+void Direct3DDevice8::InitDevice(D3DPRESENT_PARAMETERS *pPresentationParameters, HWND hWnd, bool MultiSampleFlag)
+{
 	ProxyAddressLookupTable = new AddressLookupTable(this);
 	PaletteFlag = SupportsPalettes();
+	DeviceMultiSampleFlag = MultiSampleFlag;
+
+	if (pPresentationParameters)
+	{
+		MainhWnd = (IsWindow(hWnd)) ? hWnd : (IsWindow(pPresentationParameters->hDeviceWindow)) ? pPresentationParameters->hDeviceWindow : nullptr;
+
+		if (MultiSampleFlag)
+		{
+			DeviceMultiSampleType = pPresentationParameters->MultiSampleType;
+			DeviceMultiSampleQuality = pPresentationParameters->MultiSampleQuality;
+		}
+	}
+	else
+	{
+		MainhWnd = (IsWindow(hWnd)) ? hWnd : (IsWindow(MainhWnd)) ? MainhWnd : nullptr;
+	}
+
+	if (DeviceMultiSampleType != D3DMULTISAMPLE_NONE)
+	{
+		SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, TRUE);
+	}
 }
 Direct3DDevice8::~Direct3DDevice8()
 {
@@ -202,6 +235,31 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::Reset(D3DPRESENT_PARAMETERS8 *pPresen
 
 	D3DPRESENT_PARAMETERS PresentParams;
 	ConvertPresentParameters(*pPresentationParameters, PresentParams);
+
+	// Test for Multisample
+	if (DeviceMultiSampleFlag)
+	{
+		D3DPRESENT_PARAMETERS d3dpp;
+		CopyMemory(&d3dpp, &PresentParams, sizeof(D3DPRESENT_PARAMETERS));
+		d3dpp.BackBufferCount = (d3dpp.BackBufferCount) ? d3dpp.BackBufferCount : 1;
+
+		// Update Present Parameter for Multisample
+		UpdatePresentParameterForMultisample(&d3dpp, DeviceMultiSampleType, DeviceMultiSampleQuality);
+
+		// Reset device
+		if (SUCCEEDED(ProxyInterface->Reset(&d3dpp)))
+		{
+			return D3D_OK;
+		}
+
+		// If failed
+		DeviceMultiSampleFlag = false;
+		DeviceMultiSampleType = D3DMULTISAMPLE_NONE;
+		DeviceMultiSampleQuality = 0;
+#ifndef D3D8TO9NOLOG
+		LOG << __FUNCTION__ << " MultiSample disabled!!!" << std::endl;
+#endif
+	}
 
 	// Get multisample quality level
 	if (PresentParams.MultiSampleType != D3DMULTISAMPLE_NONE)
@@ -401,7 +459,12 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateRenderTarget(UINT Width, UINT H
 	DWORD QualityLevels = 0;
 
 	// Get multisample quality level
-	if (MultiSample != D3DMULTISAMPLE_NONE)
+	if (DeviceMultiSampleFlag)
+	{
+		MultiSample = DeviceMultiSampleType;
+		QualityLevels = DeviceMultiSampleQuality;
+	}
+	else if (MultiSample != D3DMULTISAMPLE_NONE)
 	{
 		D3DDEVICE_CREATION_PARAMETERS CreationParams;
 		ProxyInterface->GetCreationParameters(&CreationParams);
@@ -435,7 +498,12 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateDepthStencilSurface(UINT Width,
 	DWORD QualityLevels = 0;
 
 	// Get multisample quality level
-	if (MultiSample != D3DMULTISAMPLE_NONE)
+	if (DeviceMultiSampleFlag)
+	{
+		MultiSample = DeviceMultiSampleType;
+		QualityLevels = DeviceMultiSampleQuality;
+	}
+	else if (MultiSample != D3DMULTISAMPLE_NONE)
 	{
 		D3DDEVICE_CREATION_PARAMETERS CreationParams;
 		ProxyInterface->GetCreationParameters(&CreationParams);

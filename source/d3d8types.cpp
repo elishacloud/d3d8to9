@@ -172,6 +172,25 @@ void ConvertAdapterIdentifier(D3DADAPTER_IDENTIFIER9 &Input, D3DADAPTER_IDENTIFI
 	Output.DeviceIdentifier = Input.DeviceIdentifier;
 	Output.WHQLLevel = Input.WHQLLevel;
 }
+void UpdatePresentParameterForMultisample(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DMULTISAMPLE_TYPE MultiSampleType, DWORD MultiSampleQuality)
+{
+	if (!pPresentationParameters)
+	{
+		return;
+	}
+
+	pPresentationParameters->MultiSampleType = MultiSampleType;
+	pPresentationParameters->MultiSampleQuality = MultiSampleQuality;
+
+	pPresentationParameters->Flags &= ~D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
+	pPresentationParameters->SwapEffect = D3DSWAPEFFECT_DISCARD;
+
+	if (!pPresentationParameters->EnableAutoDepthStencil)
+	{
+		pPresentationParameters->EnableAutoDepthStencil = true;
+		pPresentationParameters->AutoDepthStencilFormat = D3DFMT_D24S8;
+	}
+}
 bool SupportsPalettes()
 {
 	HDC hDC = GetDC(nullptr);
