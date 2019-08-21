@@ -36,17 +36,11 @@ void Direct3DDevice8::InitDevice(D3DPRESENT_PARAMETERS *pPresentationParameters,
 
 	if (pPresentationParameters)
 	{
-		MainhWnd = (IsWindow(hWnd)) ? hWnd : (IsWindow(pPresentationParameters->hDeviceWindow)) ? pPresentationParameters->hDeviceWindow : nullptr;
-
 		if (MultiSampleFlag)
 		{
 			DeviceMultiSampleType = pPresentationParameters->MultiSampleType;
 			DeviceMultiSampleQuality = pPresentationParameters->MultiSampleQuality;
 		}
-	}
-	else
-	{
-		MainhWnd = (IsWindow(hWnd)) ? hWnd : (IsWindow(MainhWnd)) ? MainhWnd : nullptr;
 	}
 
 	if (DeviceMultiSampleType != D3DMULTISAMPLE_NONE)
@@ -459,12 +453,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateRenderTarget(UINT Width, UINT H
 	DWORD QualityLevels = 0;
 
 	// Get multisample quality level
-	if (DeviceMultiSampleFlag)
-	{
-		MultiSample = DeviceMultiSampleType;
-		QualityLevels = DeviceMultiSampleQuality;
-	}
-	else if (MultiSample != D3DMULTISAMPLE_NONE)
+	if (MultiSample != D3DMULTISAMPLE_NONE)
 	{
 		D3DDEVICE_CREATION_PARAMETERS CreationParams;
 		ProxyInterface->GetCreationParameters(&CreationParams);
@@ -498,12 +487,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateDepthStencilSurface(UINT Width,
 	DWORD QualityLevels = 0;
 
 	// Get multisample quality level
-	if (DeviceMultiSampleFlag)
-	{
-		MultiSample = DeviceMultiSampleType;
-		QualityLevels = DeviceMultiSampleQuality;
-	}
-	else if (MultiSample != D3DMULTISAMPLE_NONE)
+	if (MultiSample != D3DMULTISAMPLE_NONE)
 	{
 		D3DDEVICE_CREATION_PARAMETERS CreationParams;
 		ProxyInterface->GetCreationParameters(&CreationParams);

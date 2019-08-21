@@ -192,7 +192,6 @@ private:
 	bool DeviceMultiSampleFlag = false;
 	D3DMULTISAMPLE_TYPE DeviceMultiSampleType = D3DMULTISAMPLE_NONE;
 	DWORD DeviceMultiSampleQuality = 0;
-	HWND MainhWnd = nullptr;
 };
 
 class Direct3DSwapChain8 : public IUnknown, public AddressLookupTableObject
