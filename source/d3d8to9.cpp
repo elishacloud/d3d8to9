@@ -10,6 +10,19 @@ PFN_D3DXAssembleShader D3DXAssembleShader = nullptr;
 PFN_D3DXDisassembleShader D3DXDisassembleShader = nullptr;
 PFN_D3DXLoadSurfaceFromSurface D3DXLoadSurfaceFromSurface = nullptr;
 
+#define MAX_D3D9ON12_QUEUES        2
+
+typedef struct _D3D9ON12_ARGS
+{
+	BOOL Enable9On12;
+	IUnknown* pD3D12Device;
+	IUnknown* ppD3D12Queues[MAX_D3D9ON12_QUEUES];
+	UINT NumQueues;
+	UINT NodeMask;
+} D3D9ON12_ARGS;
+
+typedef IDirect3D9* (WINAPI* PFN_Direct3DCreate9On12)(UINT SDKVersion, D3D9ON12_ARGS* pOverrideList, UINT NumOverrideEntries);
+
 #ifndef D3D8TO9NOLOG
  // Very simple logging for the purpose of debugging only.
 std::ofstream LOG;
@@ -35,7 +48,30 @@ extern "C" Direct3D8 *WINAPI Direct3DCreate8(UINT SDKVersion)
 	LOG << "> Passing on to 'Direct3DCreate9':" << std::endl;
 #endif
 
-	IDirect3D9 *const d3d = Direct3DCreate9(D3D_SDK_VERSION);
+	IDirect3D9* d3d = nullptr;
+
+	// Load d3d9.dll
+	HMODULE d3d9_dll = LoadLibraryA("d3d9.dll");
+
+	// Get export
+	PFN_Direct3DCreate9On12 Direct3DCreate9On12 = (PFN_Direct3DCreate9On12)GetProcAddress(d3d9_dll, "Direct3DCreate9On12");
+
+	// Check if export exists
+	if (Direct3DCreate9On12)
+	{
+		// Setup arguments
+		D3D9ON12_ARGS args;
+		memset(&args, 0, sizeof(args));
+		args.Enable9On12 = TRUE;
+
+		// Call function
+		d3d = Direct3DCreate9On12(D3D_SDK_VERSION, &args, 1);
+	}
+	else
+	{
+		// If Direct3DCreate9On12 does not exist than fall back on normal function
+		d3d = Direct3DCreate9(D3D_SDK_VERSION);
+	}
 
 	if (d3d == nullptr)
 	{
