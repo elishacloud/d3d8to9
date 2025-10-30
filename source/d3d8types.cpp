@@ -46,12 +46,22 @@ DWORD GetDepthStencilBitCount(D3DFORMAT Format)
 
 DWORD CalcDepthBias(DWORD ZBias, DWORD DepthBitCount)
 {
-	if (ZBias == 0)
-		return 0;
-
-	// 24-bits of precision is the max handled by a float
-	DepthBitCount = DepthBitCount ? std::min(std::max(DepthBitCount, 15UL), 24UL) : 16;
-	float DepthBias = -(static_cast<float>(std::min(ZBias, 16UL)) / ((1ULL << DepthBitCount) - 1));
+	float DepthEpsilon;
+	switch (DepthBitCount)
+	{
+	case 32:
+	case 24:
+		DepthEpsilon = -0.00014f;
+		break;
+	default:
+	case 16:
+		DepthEpsilon = -0.00028f;
+		break;
+	case 15:
+		DepthEpsilon = -0.00035f;
+		break;
+	}
+	float DepthBias = std::min(ZBias, 16UL) * DepthEpsilon;
 	return *reinterpret_cast<DWORD*>(&DepthBias);
 }
 
