@@ -26,6 +26,10 @@ Direct3DDevice8::Direct3DDevice8(Direct3D8 *d3d, IDirect3DDevice9 *ProxyInterfac
 	// The default value of D3DRS_POINTSIZE_MIN is 0.0f in D3D8,
 	// whereas in D3D9 it is 1.0f, so adjust it as needed
 	ProxyInterface->SetRenderState(D3DRS_POINTSIZE_MIN, (DWORD) 0.0f);
+	// The DEPTHBIAS value of -0.0f works differently than 0.0f
+	// Some games require defaulting to -0.0f to work correctly
+	float DepthBias = -0.0f;
+	ProxyInterface->SetRenderState(D3DRS_DEPTHBIAS, *(DWORD*)&DepthBias);
 }
 Direct3DDevice8::~Direct3DDevice8()
 {
@@ -212,6 +216,10 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::Reset(D3DPRESENT_PARAMETERS8 *pPresen
 		// The default value of D3DRS_POINTSIZE_MIN is 0.0f in D3D8,
 		// whereas in D3D9 it is 1.0f, so adjust it as needed
 		ProxyInterface->SetRenderState(D3DRS_POINTSIZE_MIN, (DWORD) 0.0f);
+		// The DEPTHBIAS value of -0.0f works differently than 0.0f
+		// Some games require defaulting to -0.0f to work correctly
+		float DepthBias = -0.0f;
+		ProxyInterface->SetRenderState(D3DRS_DEPTHBIAS, *(DWORD*)&DepthBias);
 	}
 
 	return hr;
