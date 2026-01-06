@@ -51,14 +51,14 @@ DWORD CalcDepthBias(DWORD ZBias, DWORD DepthBitCount)
 	{
 	case 32:
 	case 24:
-		DepthEpsilon = -10.0f / (1 << 16);
+		DepthEpsilon = -FLT_EPSILON;
 		break;
 	default:
 	case 16:
-		DepthEpsilon = -20.0f / (1 << 16);
+		DepthEpsilon = -1.0f / ((1 << 16) - 1);
 		break;
 	case 15:
-		DepthEpsilon = -25.0f / (1 << 16);
+		DepthEpsilon = -1.0f / ((1 << 15) - 1);
 		break;
 	}
 	float DepthBias = std::min(ZBias, 16UL) * DepthEpsilon;
