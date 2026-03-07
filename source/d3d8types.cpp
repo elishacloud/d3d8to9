@@ -7,28 +7,12 @@
 #include <assert.h>
 #include <algorithm>
 
-bool SupportsPalettes()
-{
-	HDC hDC = GetDC(nullptr);
-	bool hasPalette = (GetDeviceCaps(hDC, RASTERCAPS) & RC_PALETTE) != 0;
-	ReleaseDC(nullptr, hDC);
-	return hasPalette;
-}
-
-bool IsDepthStencil(D3DFORMAT &Format) {
-	return Format == D3DFMT_D16_LOCKABLE
-		|| Format == D3DFMT_D16
-		|| Format == D3DFMT_D32
-		|| Format == D3DFMT_D15S1
-		|| Format == D3DFMT_D24X4S4
-		|| Format == D3DFMT_D24S8
-		|| Format == D3DFMT_D24X8;
-}
-
 DWORD GetDepthStencilBitCount(D3DFORMAT Format)
 {
 	switch (Format)
 	{
+	default:
+		return 0;
 	case D3DFMT_D15S1:
 		return 15;
 	case D3DFMT_D16_LOCKABLE:
@@ -41,7 +25,6 @@ DWORD GetDepthStencilBitCount(D3DFORMAT Format)
 	case D3DFMT_D32:
 		return 32;
 	}
-	return 0;
 }
 
 DWORD CalcDepthBias(DWORD ZBias, DWORD DepthBitCount)

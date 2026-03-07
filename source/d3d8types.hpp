@@ -191,14 +191,11 @@ struct D3DADAPTER_IDENTIFIER8
 	DWORD WHQLLevel;
 };
 
-bool SupportsPalettes();
-bool IsDepthStencil(D3DFORMAT &format);
-
 DWORD GetDepthStencilBitCount(D3DFORMAT Format);
-DWORD CalcDepthBias(DWORD ZBias, DWORD DepthBits);
+DWORD CalcDepthBias(DWORD ZBias, DWORD BitCount);
 
-void ConvertCaps(D3DCAPS9 &input, D3DCAPS8 &output);
-void ConvertVolumeDesc(D3DVOLUME_DESC &input, D3DVOLUME_DESC8 &output);
-void ConvertSurfaceDesc(D3DSURFACE_DESC &input, D3DSURFACE_DESC8 &output);
-void ConvertPresentParameters(D3DPRESENT_PARAMETERS8 &input, D3DPRESENT_PARAMETERS &output);
-void ConvertAdapterIdentifier(D3DADAPTER_IDENTIFIER9 &input, D3DADAPTER_IDENTIFIER8 &output);
+void ConvertCaps(D3DCAPS9 &Input, D3DCAPS8 &Output);
+void ConvertVolumeDesc(D3DVOLUME_DESC &Input, D3DVOLUME_DESC8 &Output);
+void ConvertSurfaceDesc(D3DSURFACE_DESC &Input, D3DSURFACE_DESC8 &Output);
+void ConvertPresentParameters(D3DPRESENT_PARAMETERS8 &Input, D3DPRESENT_PARAMETERS &Output);
+void ConvertAdapterIdentifier(D3DADAPTER_IDENTIFIER9 &Input, D3DADAPTER_IDENTIFIER8 &Output);

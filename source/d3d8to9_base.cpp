@@ -19,8 +19,8 @@ Direct3D8::Direct3D8(IDirect3D9 *ProxyInterface) :
 	D3DDISPLAYMODE pMode;
 
 	CurrentAdapterCount = ProxyInterface->GetAdapterCount();
-	if (CurrentAdapterCount > MaxAdapters)
-		CurrentAdapterCount = MaxAdapters;
+	if (CurrentAdapterCount > MAX_ADAPTERS)
+		CurrentAdapterCount = MAX_ADAPTERS;
 
 	for (UINT Adapter = 0; Adapter < CurrentAdapterCount; Adapter++)
 	{

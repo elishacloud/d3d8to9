@@ -41,10 +41,11 @@ public:
 
 private:
 	IDirect3D9 *const ProxyInterface;
-	static const UINT MaxAdapters = 8;
+
+	static constexpr UINT MAX_ADAPTERS = 8;
 	UINT CurrentAdapterCount = 0;
-	UINT CurrentAdapterModeCount[MaxAdapters] = { 0 };
-	std::vector<D3DDISPLAYMODE> CurrentAdapterModes[MaxAdapters];
+	UINT CurrentAdapterModeCount[MAX_ADAPTERS] = {};
+	std::vector<D3DDISPLAYMODE> CurrentAdapterModes[MAX_ADAPTERS];
 };
 
 class Direct3DDevice8 : public IDirect3DDevice8
@@ -165,20 +166,22 @@ private:
 
 	Direct3D8 *const D3D;
 	IDirect3DDevice9 *const ProxyInterface;
+
 	const BOOL ZBufferDiscarding = FALSE;
-	DWORD ZBufferBitCount = 0;
-	DWORD ZBiasRenderState = 0;
-	INT CurrentBaseVertexIndex = 0;
-	DWORD CurrentVertexShaderHandle = 0, CurrentPixelShaderHandle = 0;
-	bool PaletteFlag = false;
+	bool IsPaletteSupported = false;
+	bool IsMixedVertexProcessingDevice = false;
 	bool IsRecordingState = false;
-	bool IsMixedVPModeDevice = false;
+
+	DWORD CurrentZBufferBitCount = 0;
+	DWORD CurrentZBiasRenderState = 0;
+	INT   CurrentBaseVertexIndex = 0;
+	DWORD CurrentVertexShaderHandle = 0, CurrentPixelShaderHandle = 0;
 
 	static constexpr size_t MAX_CLIP_PLANES = 6;
 	float StoredClipPlanes[MAX_CLIP_PLANES][4] = {};
 	DWORD ClipPlaneRenderState = 0;
 
-	// Store Shader Handles and State Block Tokens so they can be destroyed later to mirror D3D8 behavior
+	// Store shader handles and state block tokens so they can be destroyed later to mirror D3D8 behavior
 	std::unordered_set<DWORD> PixelShaderHandles, VertexShaderHandles, StateBlockTokens;
 	unsigned int VertexShaderAndDeclarationCount = 0;
 };

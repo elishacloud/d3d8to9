@@ -18,18 +18,22 @@ Direct3DDevice8::Direct3DDevice8(Direct3D8 *d3d, IDirect3DDevice9 *ProxyInterfac
 	D3D(d3d), ProxyInterface(ProxyInterface), ZBufferDiscarding(EnableZBufferDiscarding)
 {
 	ProxyAddressLookupTable = new AddressLookupTable(this);
-	PaletteFlag = SupportsPalettes();
 
-	ZBufferBitCount = GetDepthStencilBitCount(ZBufferFormat);
+	const HDC hDC = GetDC(nullptr);
+	IsPaletteSupported = (::GetDeviceCaps(hDC, RASTERCAPS) & RC_PALETTE) != 0;
+	ReleaseDC(nullptr, hDC);
 
-	IsMixedVPModeDevice = BehaviorFlags & D3DCREATE_MIXED_VERTEXPROCESSING;
+	IsMixedVertexProcessingDevice = (BehaviorFlags & D3DCREATE_MIXED_VERTEXPROCESSING) != 0;
+
+	CurrentZBufferBitCount = GetDepthStencilBitCount(ZBufferFormat);
+
 	// The default value of D3DRS_POINTSIZE_MIN is 0.0f in D3D8,
 	// whereas in D3D9 it is 1.0f, so adjust it as needed
-	ProxyInterface->SetRenderState(D3DRS_POINTSIZE_MIN, (DWORD) 0.0f);
+	ProxyInterface->SetRenderState(D3DRS_POINTSIZE_MIN, (DWORD)0.0f);
 	// The DEPTHBIAS value of -0.0f works differently than 0.0f
 	// Some games require defaulting to -0.0f to work correctly
-	float DepthBias = -0.0f;
-	ProxyInterface->SetRenderState(D3DRS_DEPTHBIAS, *(DWORD*)&DepthBias);
+	const float DepthBias = -0.0f;
+	ProxyInterface->SetRenderState(D3DRS_DEPTHBIAS, *(const DWORD *)&DepthBias);
 }
 Direct3DDevice8::~Direct3DDevice8()
 {
@@ -194,7 +198,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::Reset(D3DPRESENT_PARAMETERS8 *pPresen
 	if (pPresentationParameters == nullptr)
 		return D3DERR_INVALIDCALL;
 
-	ZBiasRenderState = 0;
+	CurrentZBiasRenderState = 0;
 
 	const HRESULT deviceState = ProxyInterface->TestCooperativeLevel();
 
@@ -418,8 +422,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateImageSurface(UINT Width, UINT H
 	if (ppSurface == nullptr)
 		return D3DERR_INVALIDCALL;
 
-	// Only CreateImageSurface clears the content of ppSurface
-	// before checking if Format is equal to D3DFMT_UNKNOWN.
+	// Only 'CreateImageSurface' clears the content of ppSurface before checking if Format is equal to D3DFMT_UNKNOWN.
 	*ppSurface = nullptr;
 
 	if (Format == D3DFMT_UNKNOWN)
@@ -456,7 +459,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CopyRects(IDirect3DSurface8 *pSourceS
 	if (SourceDesc.Format != DestinationDesc.Format)
 		return D3DERR_INVALIDCALL;
 
-	if (IsDepthStencil(SourceDesc.Format))
+	if (GetDepthStencilBitCount(SourceDesc.Format) != 0)
 		return D3DERR_INVALIDCALL;
 
 	HRESULT hr = D3DERR_INVALIDCALL;
@@ -589,8 +592,10 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::SetRenderTarget(IDirect3DSurface8 *pR
 
 		D3DSURFACE_DESC8 Desc = {};
 		pNewZStencilImpl->GetDesc(&Desc);
-		ZBufferBitCount = GetDepthStencilBitCount(Desc.Format);
-		ProxyInterface->SetRenderState(D3DRS_DEPTHBIAS, CalcDepthBias(ZBiasRenderState, ZBufferBitCount));
+
+		CurrentZBufferBitCount = GetDepthStencilBitCount(Desc.Format);
+
+		ProxyInterface->SetRenderState(D3DRS_DEPTHBIAS, CalcDepthBias(CurrentZBiasRenderState, CurrentZBufferBitCount));
 	}
 	else
 	{
@@ -741,7 +746,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::SetRenderState(D3DRENDERSTATETYPE Sta
 	case D3DRS_SOFTWAREVERTEXPROCESSING:
 		// SWVP can be modified by this render state only on devices
 		// created with the D3DCREATE_MIXED_VERTEXPROCESSING flag
-		if (IsMixedVPModeDevice)
+		if (IsMixedVertexProcessingDevice)
 			return ProxyInterface->SetSoftwareVertexProcessing(static_cast<BOOL>(Value));
 		return D3D_OK;
 	case D3DRS_EDGEANTIALIAS:
@@ -752,8 +757,8 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::SetRenderState(D3DRENDERSTATETYPE Sta
 			ClipPlaneRenderState = Value;
 		return hr;
 	case D3DRS_ZBIAS:
-		ZBiasRenderState = Value;
-		Value = CalcDepthBias(Value, ZBufferBitCount);
+		CurrentZBiasRenderState = Value;
+		Value = CalcDepthBias(Value, CurrentZBufferBitCount);
 		State = D3DRS_DEPTHBIAS;
 	default:
 		return ProxyInterface->SetRenderState(State, Value);
@@ -775,7 +780,7 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::GetRenderState(D3DRENDERSTATETYPE Sta
 	case D3DRS_EDGEANTIALIAS:
 		return ProxyInterface->GetRenderState(D3DRS_ANTIALIASEDLINEENABLE, pValue);
 	case D3DRS_ZBIAS:
-		*pValue = ZBiasRenderState;
+		*pValue = CurrentZBiasRenderState;
 		return D3D_OK;
 	case D3DRS_SOFTWAREVERTEXPROCESSING:
 		*pValue = static_cast<DWORD>(ProxyInterface->GetSoftwareVertexProcessing());
@@ -1102,14 +1107,14 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::GetPaletteEntries(UINT PaletteNumber,
 }
 HRESULT STDMETHODCALLTYPE Direct3DDevice8::SetCurrentTexturePalette(UINT PaletteNumber)
 {
-	if (!PaletteFlag)
+	if (!IsPaletteSupported)
 		return D3DERR_INVALIDCALL;
 
 	return ProxyInterface->SetCurrentTexturePalette(PaletteNumber);
 }
 HRESULT STDMETHODCALLTYPE Direct3DDevice8::GetCurrentTexturePalette(UINT *pPaletteNumber)
 {
-	if (!PaletteFlag)
+	if (!IsPaletteSupported)
 		return D3DERR_INVALIDCALL;
 
 	return ProxyInterface->GetCurrentTexturePalette(pPaletteNumber);
@@ -2327,12 +2332,15 @@ void Direct3DDevice8::ReleaseShadersAndStateBlocks()
 		DWORD Handle = *PixelShaderHandles.begin();
 		DeletePixelShader(Handle);
 	}
+
 	while (!VertexShaderHandles.empty())
 	{
 		DWORD Handle = *VertexShaderHandles.begin();
 		DeleteVertexShader(Handle);
 	}
+
 	VertexShaderAndDeclarationCount = 0;
+
 	while (!StateBlockTokens.empty())
 	{
 		DWORD Token = *StateBlockTokens.begin();
