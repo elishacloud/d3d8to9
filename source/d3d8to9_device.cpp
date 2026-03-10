@@ -1872,7 +1872,12 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreatePixelShader(const DWORD *pFunct
 	while (std::regex_search(SourceCode, std::regex("-c[0-9]|c[0-9][\\.wxyz]*_")) && ArithmeticCount < 8)
 	{
 		// Make sure that the dest register is not already being used
-		std::string tmpLine = "\n" + std::regex_replace(SourceCode, std::regex("1?-(c[0-9])[\\._a-z0-9]*|(c[0-9])[\\.wxyz]*_[a-z0-9]*"), "-$1$2") + "\n";
+		const std::string normalizedSourceCode =
+			std::regex_replace(
+				std::regex_replace(SourceCode,
+					std::regex("1?-(c[0-9])[\\._a-z0-9]*"), "-$1"),    // Find negative modifiers
+				std::regex("(c[0-9])[\\.wxyz]*_[a-z0-9]*"), "-$1");    // Find swizzle modifiers
+		std::string tmpLine = "\n" + normalizedSourceCode + "\n";
 		size_t start = tmpLine.substr(0, tmpLine.find("-c")).rfind("\n") + 1;
 		tmpLine = tmpLine.substr(start, tmpLine.find("\n", start) - start);
 		const std::string destReg = std::regex_replace(tmpLine, std::regex("[ \\+]+[a-z_\\.0-9]+ (r[0-9]).*-c[0-9].*"),"$1");
