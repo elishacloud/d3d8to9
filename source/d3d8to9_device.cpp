@@ -1364,7 +1364,29 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreateVertexShader(const DWORD *pDecl
 			return hr;
 		}
 
-		std::string SourceCode(static_cast<const char *>(Disassembly->GetBufferPointer()), Disassembly->GetBufferSize() - 1);
+		std::string SourceCode;
+		{
+			const char* raw = static_cast<const char*>(Disassembly->GetBufferPointer());
+			size_t rawSize = Disassembly->GetBufferSize();
+
+			SourceCode.reserve(rawSize);
+
+			for (size_t i = 0; i < rawSize; ++i)
+			{
+				unsigned char c = static_cast<unsigned char>(raw[i]);
+
+				bool isAllowed =
+					(c == '\t') ||
+					(c == '\n') ||
+					(c == '\r') ||
+					(c >= ' ' && c <= '~');
+
+				if (!isAllowed)
+					continue;
+
+				SourceCode.push_back(static_cast<char>(c));
+			}
+		}
 
 #ifndef D3D8TO9NOLOG
 		LOG << "> Dumping original shader assembly:" << std::endl << std::endl << SourceCode << std::endl;
@@ -1830,7 +1852,30 @@ HRESULT STDMETHODCALLTYPE Direct3DDevice8::CreatePixelShader(const DWORD *pFunct
 		return hr;
 	}
 
-	std::string SourceCode(static_cast<const char *>(Disassembly->GetBufferPointer()), Disassembly->GetBufferSize() - 1);
+	std::string SourceCode;
+	{
+		const char* raw = static_cast<const char*>(Disassembly->GetBufferPointer());
+		size_t rawSize = Disassembly->GetBufferSize();
+
+		SourceCode.reserve(rawSize);
+
+		for (size_t i = 0; i < rawSize; ++i)
+		{
+			unsigned char c = static_cast<unsigned char>(raw[i]);
+
+			bool isAllowed =
+				(c == '\t') ||
+				(c == '\n') ||
+				(c == '\r') ||
+				(c >= ' ' && c <= '~');
+
+			if (!isAllowed)
+				continue;
+
+			SourceCode.push_back(static_cast<char>(c));
+		}
+	}
+
 	const size_t VersionPosition = SourceCode.find("ps_1_");
 
 	assert(VersionPosition != std::string::npos);
